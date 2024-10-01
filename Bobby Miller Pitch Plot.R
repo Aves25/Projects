@@ -142,41 +142,28 @@ tab_style(
 )
 
 Fastball <- Miller.Clean %>%
-  filter(pitch_name == "4-Seam Fastball")
+  filter(pitch_name == "4-Seam Fastball") %>%
+  filter(!is.na(plate_x) & !is.na(plate_z))
 
-# Calculate Batting Average (BA) in each zone based on the coordinates
-# Assume the 'events' column has labels for hits like 'single', 'double', etc.
-Fastball <- Fastball %>%
-  group_by(plate_x, plate_z) %>%
-  summarise(
-    BA = sum(events %in% c("single", "double", "triple", "home_run")) /
-      sum(events %in% c("single", "double", "triple", "home_run", "field_out", "strikeout")),
-    .groups = "drop"
-  )
-
-# Create smooth density heatmap for Batting Average
-library(CalledStrike)
-ggplot(Fastball, aes(x = plate_x, y = plate_z, fill = BA)) +
-  # Use stat_density_2d to smooth the batting average
-  stat_density_2d(aes(fill = ..density..), geom = "raster", contour = FALSE) +
-  scale_fill_gradient(low = "blue", high = "red", na.value = "grey",
-                      name = "Batting Average",
-                      breaks = seq(0.1, 0.3, by = 0.05),  # Set the breaks for the legend
-                      labels = c("0.100", "0.150", "0.200", "0.250", "0.300")) + # Red for higher BA
-  # Add the strike zone box with narrower lines (use 'size' parameter)
-  geom_rect(aes(xmin = -0.5, xmax = 0.5, ymin = 1.5, ymax = 3.5), color = "black", fill = NA, size = 0.5) +
-  # Customize titles and labels
+ Miller.HeatMaps<- Miller.Clean %>%
+ggplot(aes(x = plate_x, y = plate_z)) +
+  stat_density2d(aes(fill = ..density..), geom = "raster",contour = F) +
+  scale_fill_gradientn(colours = c("blue","red","white")) +
+  annotate("rect", xmin = -1, xmax = 1, 
+           ymin = 1.6, ymax = 3.4, fill = NA,
+           color = "black", alpha = .1) +
+  ylim(1,4) + xlim(-1.8,1.8) + theme_bw() + theme_classic() +
+  guides(fill = F) +
+  facet_wrap(~pitch_name) +
   labs(
-    title = " Bobby Miller Batting Average Heatmap for 4-Seam Fastball",
-    subtitle = paste(nrow(Fastball), "Pitches"),
-    x = "", y = ""
+    x = "Horizontal Pitch Location",
+    y = "Vertical Pitch Location",
+    title = "Bobby Miller Pitch Location Heat Maps",
+    subtitle = "2024 Season, From Catchers POV",
+    caption = "Data from Baseball Savant via baseballr"
   ) +
-  # Customize the theme
-  theme_minimal() +
-  theme(
-    plot.title = element_text(color = "dodgerblue", face = "bold", size = 16),
-    plot.subtitle = element_text(color = "gray40", size = 12),
-    axis.text = element_blank(),
-    axis.ticks = element_blank()
-  )
+  theme(plot.title = element_text(hjust = .5, color = "dodgerblue"),
+        plot.subtitle = element_text(hjust = .5,face = "bold",color = "dodgerblue"),
+        axis.title = element_text(face = "bold",color = "dodgerblue"))
 
+ggsave("Bobby Miller Heat Maps Based on Pitches.png",Miller.HeatMaps,height = 6,width = 8,dpi = 300)
